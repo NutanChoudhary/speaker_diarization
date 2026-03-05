@@ -121,29 +121,12 @@ python3 diarize.py \
 
 ## Running with Docker
 
-## Download Models
+## Step 1 - Download Models
 
 Download the required ONNX models and place them in a `models/` folder: silero_vad.onnx
 
 wget -O docker_speaker_diarization/models/titanet_large.onnx https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx
 
-### Step 1 — Pre-download wheels (one-time, on a machine with internet)
-
-Because the build server may not have internet access, download all wheels first on the host:
-
-```bash
-mkdir -p wheels
-
-# PyTorch with CUDA
-pip download torch==2.9.1 torchaudio==2.9.1 \
-    --index-url https://download.pytorch.org/whl/cu121 \
-    -d wheels
-
-# Everything else
-pip download onnxruntime-gpu==1.24.1 librosa==0.11.0 soundfile==0.13.1 \
-    numpy==2.2.6 scipy==1.16.3 packaging==24.2 \
-    -d wheels
-```
 
 ### Step 2 — Build
 
