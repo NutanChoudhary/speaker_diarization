@@ -147,6 +147,20 @@ docker run --gpus 1 --rm \
     --outdir     /data/diarization_output
 ```
 
+or for single audio file
+
+
+``` bash
+docker run --gpus 1 --rm \
+  -v docker_speaker_diarization/models:/models:ro \
+  -v /mnt/disk5/nutan:/data \
+  diarization:latest \
+    --audio      /data/output.wav \
+    --silero     /models/silero_vad.onnx \
+    --titanet    /models/titanet_large.onnx \
+    --outdir     /data/diarization_output
+```
+
 ### Volume mount layout
 
 | Host path | Container path | Purpose |
