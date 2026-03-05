@@ -132,9 +132,12 @@ wget -O docker_speaker_diarization/models/titanet_large.onnx https://github.com/
 
 ```bash
 docker build -t diarization:latest .
+```
 
 
 ### Step 3 — Run
+
+Run this for mutiple audio files. script is optimized for batching and resource scheduling
 
 ```bash
 docker run --gpus 1 --rm \
