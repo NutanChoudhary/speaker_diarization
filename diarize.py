@@ -62,11 +62,11 @@ log = logging.getLogger("diarize")
 #  CONFIG  —  edit these paths before running
 # ══════════════════════════════════════════════════════════════════════════════
 
-CONFIG = dict(
-    audio_path        = "/mnt/disk5/nutan/output.wav",
-    silero_onnx_path  = "/mnt/disk5/nutan/final_mle/silero_vad.onnx",
-    titanet_onnx_path = "/mnt/disk5/nutan/nemo/nemo_git/titanet_large.onnx",
-    output_dir        = "/mnt/disk5/nutan/diarization_output",
+CONFIG = dict( 
+    audio_path        = None,  #audio_path
+    silero_onnx_path  = "/models/silero_vad.onnx", 
+    titanet_onnx_path = "/mnt/disk5/nutan/nemo/nemo_git/titanet_large.onnx",  #https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx
+    output_dir        = "/diarization_output",  #output_dir
 
     # VAD
     vad_threshold           = 0.5,
