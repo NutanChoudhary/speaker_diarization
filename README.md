@@ -59,7 +59,6 @@ Audio (.wav)
 ```
 diarization/
 ├── diarize.py                   # Entry point — orchestrates all 4 steps
-├── requirements.txt             # Python dependencies (no torch — installed separately)
 ├── Dockerfile                   # Production container definition
 │
 ├── vad/
@@ -82,11 +81,12 @@ diarization/
 ### Prerequisites
 
 ```bash
+python 3.13.1
 # Python dependencies
 pip install torch==2.9.1 torchaudio==2.9.1 \
     --index-url https://download.pytorch.org/whl/cu121
 
-pip install onnxruntime-gpu==1.24.1 librosa==0.11.0 soundfile==0.13.1 \
+pip install onnxruntime-gpu==1.24.2 onnxruntime librosa==0.11.0 soundfile==0.13.1 \
     numpy==2.2.6 scipy==1.16.3 packaging==24.2
 ```
 
@@ -110,12 +110,23 @@ python3 diarize.py \
 Or edit the `CONFIG` block at the top of `diarize.py` and run without arguments:
 
 ```bash
-python3 diarize.py
+python3 diarize.py \
+    --batch-dir   /data/test_audio\
+    --silero  /path/to/silero_vad.onnx \
+    --titanet /path/to/titanet_large.onnx \
+    --outdir  /path/to/output/
 ```
 
 ---
 
 ## Running with Docker
+
+## Download Models
+
+Download the required ONNX models and place them in a `models/` folder: silero_vad.onnx
+
+wget -O docker_speaker_diarization/models/titanet_large.onnx \
+      https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx
 
 ### Step 1 — Pre-download wheels (one-time, on a machine with internet)
 
@@ -140,26 +151,18 @@ pip download onnxruntime-gpu==1.24.1 librosa==0.11.0 soundfile==0.13.1 \
 ```bash
 docker build -t diarization:latest .
 
-# If behind a corporate proxy:
-docker build \
-    --network=host \
-    --build-arg HTTP_PROXY=$HTTP_PROXY \
-    --build-arg HTTPS_PROXY=$HTTPS_PROXY \
-    -t diarization:latest .
-```
 
 ### Step 3 — Run
 
 ```bash
 docker run --gpus 1 --rm \
-    -v /path/to/models:/models:ro \
-    -v /path/to/audio:/data/input:ro \
-    -v /path/to/output:/data/output \
-    diarization:latest \
-        --audio   /data/input/audio.wav \
-        --silero  /models/silero_vad.onnx \
-        --titanet /models/titanet_large.onnx \
-        --outdir  /data/output
+  -v docker_speaker_diarization/models:/models:ro \
+  -v /mnt/disk5/nutan:/data \
+  diarization:latest \
+    --batch-dir  /test_audios \
+    --silero     /models/silero_vad.onnx \
+    --titanet    /models/titanet_large.onnx \
+    --outdir     /data/diarization_output
 ```
 
 ### Volume mount layout
@@ -170,20 +173,6 @@ docker run --gpus 1 --rm \
 | `/your/audio/` | `/data/input` (read-only) | Input audio files |
 | `/your/output/` | `/data/output` | RTTM + CTM output files |
 
-### Production notes
-
-- **Models are never baked into the image.** Mount them at runtime via `-v`. This keeps the image small (~4 GB) and lets you swap models without rebuilding.
-- **Run as non-root.** The container drops to `appuser` before execution. Ensure your output directory is writable by UID 1000, or override with `--user $(id -u):$(id -g)`.
-- **GPU is required for reasonable performance.** Without `--gpus 1`, ORT falls back to CPU and embedding extraction becomes 20–30x slower.
-- **One container per file.** The pipeline is stateless and designed for single-file processing. For batch workloads, run multiple containers in parallel rather than processing files sequentially inside one container.
-- **Verify GPU is visible before deploying:**
-    ```bash
-    docker run --gpus 1 --rm diarization:latest python3 -c \
-        "import onnxruntime as ort; print(ort.get_available_providers())"
-    # Must include: CUDAExecutionProvider
-    ```
-
----
 
 ## Output Format
 
@@ -208,7 +197,7 @@ audio_name A 5.154 3.068 SPEAKER_00 1.000
 
 ### Console report
 
-Printed to stdout on every run — includes a colour-coded turn timeline, per-speaker summary with percentage share, and an overlap analysis section.
+Printed to stdout on every run — includes per-speaker summary with percentage share, and an overlap analysis section.
 
 ---
 
@@ -230,23 +219,11 @@ All parameters can be set in the `CONFIG` block in `diarize.py` or passed as CLI
 
 ## Design Decisions and Trade-offs
 
-**Silero VAD vendored as a local module**
-The `silero_vad` pip package downloads the model at runtime from the internet. Vendoring the `OnnxWrapper` class directly means the entire pipeline works offline once you have the `.onnx` file. Trade-off: we own the maintenance of that class if Silero's API changes.
-
 **TitaNet over simpler speaker models**
-TitaNet Large produces high-quality 192-dimensional embeddings trained specifically for speaker verification. The trade-off is model size (~60 MB ONNX) and inference time versus lighter alternatives like ECAPA-TDNN. For production accuracy, TitaNet is the right call.
-
-**CPU torch + GPU ORT**
-PyTorch is installed as a CPU-only build inside the container. Audio loading and VAD run on CPU (fast enough — VAD takes ~0.2s for a 13s clip). TitaNet inference runs through ONNX Runtime's CUDA provider, which is where GPU matters. This keeps the Docker image ~3 GB smaller than a full CUDA PyTorch install.
+TitaNet Large produces high-quality 192-dimensional embeddings trained specifically for speaker verification. The trade-off is model size (~97 MB ONNX) and inference time versus lighter alternatives like ECAPA-TDNN. For production accuracy, TitaNet is the right call.
 
 **Agglomerative clustering over spectral clustering**
 Agglomerative clustering with average linkage requires no prior knowledge of speaker count and is deterministic. Spectral clustering can produce better boundaries but requires estimating the number of speakers first (e.g. via eigenvalue analysis), adding complexity. For a first-pass production system, agglomerative is the safer choice.
-
-**Parallel embedding extraction**
-Segments are processed in a `ThreadPoolExecutor`. Since TitaNet inference releases the GIL through ONNX Runtime's C++ backend, threads genuinely run in parallel on CPU. On GPU, ONNX Runtime serialises CUDA calls internally so the parallelism benefit is reduced, but the threading overhead is negligible.
-
-**Models mounted as volumes, not baked in**
-Baking the ONNX models into the image would add ~600 MB and make model versioning painful. Mounting them as read-only volumes at runtime means the image itself is stateless and models can be updated without a rebuild.
 
 ---
 
@@ -256,9 +233,7 @@ Baking the ONNX models into the image would add ~600 MB and make model versionin
 - **Overlapping speech is detected but not separated.** The overlap analysis in the report flags regions where two speaker turns overlap in time, but the embeddings are not decomposed — the segment is assigned to one speaker only.
 - **Short segments are unreliable.** Segments under 0.5s are skipped for embedding. If a speaker only appears in very short bursts they will be missed.
 - **No speaker re-identification across files.** Each run is independent. There is no persistent speaker database, so `SPEAKER_00` in one file is not guaranteed to be the same person as `SPEAKER_00` in another.
-- **ORT 1.24.x + numpy 2.x edge cases.** Tested and stable on numpy 2.2.6, but if you see `np.bool` deprecation errors, downgrade to numpy 1.26.4.
 
----
 
 ## What I Would Improve Given More Time
 
@@ -276,9 +251,6 @@ A persistent embedding database (e.g. FAISS index) would allow the pipeline to a
 
 **5. Confidence scores in output**
 The RTTM and CTM files currently have no confidence information. Attaching the within-cluster cosine similarity as a confidence score to each turn would make downstream filtering and human review much easier.
-
-**6. Evaluation harness**
-There is no automated DER (Diarization Error Rate) evaluation. Adding a `evaluate.py` script that runs `pyannote.metrics` against a reference RTTM would make it straightforward to benchmark changes to clustering parameters or model versions.
 
 **7. Replace agglomerative clustering with spectral clustering**
 For recordings with a known or estimable number of speakers, spectral clustering on the cosine affinity matrix consistently outperforms agglomerative in DER benchmarks. The main blocker is robustly estimating speaker count first (see point 1).
