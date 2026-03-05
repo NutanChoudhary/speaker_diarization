@@ -95,7 +95,7 @@ pip install onnxruntime-gpu==1.24.2 onnxruntime librosa==0.11.0 soundfile==0.13.
 | Model | Purpose | Download |
 |---|---|---|
 | `silero_vad.onnx` | Voice activity detection | `wget https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx` |
-| `titanet_large.onnx` | Speaker embeddings | https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx | export code is provided in model_export.py
+| `titanet_large.onnx` | Speaker embeddings | wget -O docker_speaker_diarization/models/titanet_large.onnx https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx | export code is provided in model_export.py
 
 ### Run
 
@@ -125,8 +125,7 @@ python3 diarize.py \
 
 Download the required ONNX models and place them in a `models/` folder: silero_vad.onnx
 
-wget -O docker_speaker_diarization/models/titanet_large.onnx \
-      https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx
+wget -O docker_speaker_diarization/models/titanet_large.onnx https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx
 
 ### Step 1 — Pre-download wheels (one-time, on a machine with internet)
 
