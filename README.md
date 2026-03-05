@@ -95,7 +95,7 @@ pip install onnxruntime-gpu==1.24.2 onnxruntime librosa==0.11.0 soundfile==0.13.
 | Model | Purpose | Download |
 |---|---|---|
 | `silero_vad.onnx` | Voice activity detection | `wget https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx` |
-| `titanet_large.onnx` | Speaker embeddings | Export from NeMo or download from NGC |
+| `titanet_large.onnx` | Speaker embeddings | https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx | export code is provided in model_export.py
 
 ### Run
 
