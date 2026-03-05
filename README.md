@@ -95,7 +95,16 @@ pip install onnxruntime-gpu==1.24.2 onnxruntime librosa==0.11.0 soundfile==0.13.
 | Model | Purpose | Download |
 |---|---|---|
 | `silero_vad.onnx` | Voice activity detection | `wget https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx` |
-| `titanet_large.onnx` | Speaker embeddings | https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx | export code is provided in model_export.py
+| `titanet_large.onnx` | Speaker embeddings | https://github.com/NutanChoudhary/speaker_diarization/releases/tag/itanet_large.onnx |
+
+If you run into any issues downloading the pre-converted `titanet.onnx` file, you can run model_export.py 
+
+Before running the script, make sure you install the required NeMo ASR dependencies:
+
+```bash
+pip install "nemo_toolkit[asr]"
+
+```
 
 ### Run
 
